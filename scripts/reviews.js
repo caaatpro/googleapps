@@ -14,7 +14,9 @@ $('[jscontroller="H6eOGe"]').each((i, item) => {
 
 	var t = textO.text();
 	var d = $item.find('.p2TkOb:first').text();
-    
+	
+	console.log(t, d, r);
+
     reviews.push({
         text: t,
         date: d,

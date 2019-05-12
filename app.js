@@ -35,6 +35,11 @@ const scriptRun = async (script) => {
 const saveData = (data) => {
     var query = 'INSERT INTO `reviews` (`link`, `text`, `rating`, `date`) VALUES ';
     var count = data.reviews.length;
+
+    if (count == 0) {
+        return parserData();
+    }
+
     data.reviews.forEach((item, i) => {
 
         query += "(" + pool.escape(data.link) + ", " + pool.escape(item.text) + ", " + pool.escape(item.rating) + ", " + pool.escape(item.date) + ")";
@@ -63,9 +68,13 @@ const parserData = async () => {
 
     let link = applist[parserIndex];
 
+    console.log(link);
+
     await driver.get(link);
 
     let reviews = await scriptRun(reviewsScript);
+
+    // console.log(reviews);
 
     saveData({
         reviews: reviews,
@@ -95,21 +104,38 @@ const browserInit = () => {
 const getInit = () => {
     console.log('Init...');
     
-    applist = [];
+    var ignoredLinks = [];
+    // Load ignored links
+    query = "SELECT `link` FROM `reviews` GROUP BY `link`";
 
-    applistTxt.split('\n').forEach((item) => {
-        if (applist.indexOf(item) != -1 || item == '') {
-            return true;
+    pool.query(query, function (err, result) {
+        if (err) throw err;
+
+        for (const row of result) {
+            if (ignoredLinks.indexOf(row.link) != -1) continue;
+
+            ignoredLinks.push(row.link);
         }
-        applist.push(host+item+attr);
+
+        applist = [];
+
+        applistTxt.split('\n').forEach((item) => {
+            let link = host+item+attr;
+            if (applist.indexOf(link) != -1 || item == '' || item.indexOf('$') == 0 || ignoredLinks.indexOf(link) != -1) {
+                return true;
+            }
+            applist.push(host+item+attr);
+        });
+        
+        console.log(applist.length);
+
+        browserInit();
+    
+        console.log('Init end');
+    
+        console.log('Parse...');
+        getAppInfo()
     });
-
-    browserInit();
-
-    console.log('Init end');
-
-    console.log('Parse...');
-    getAppInfo()
 };
 
 const getAppInfo = async () => {
