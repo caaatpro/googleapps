@@ -24,6 +24,7 @@ const pool = mysql.createPool({
 
 const applistTxt = fs.readFileSync('applist.txt', 'utf8');
 const reviewsScript = fs.readFileSync('scripts/reviews.js', 'utf8');
+const catScript = fs.readFileSync('scripts/cat.js', 'utf8');
 
 const scriptRun = async (script) => {
     let data = driver.executeAsyncScript(script);
@@ -58,6 +59,20 @@ const saveData = (data) => {
     );
 };
 
+const saveCatData = (data) => {
+    var query = 'INSERT INTO `cats` (`tile`, `link`, `applink`) VALUES ';
+
+    query += "(" + pool.escape(data.title) + ", " + pool.escape(data.link) + ", " + pool.escape(data.applink) + ")";
+
+    pool.query(query,
+        function (err, result) {
+            if (err) throw err;
+
+            parserCatData();
+        }
+    );
+};
+
 const parserData = async () => {
     parserIndex++;
 
@@ -80,6 +95,30 @@ const parserData = async () => {
         reviews: reviews,
         link: link
     });
+    return;
+}
+
+const parserCatData = async () => {
+    parserIndex++;
+
+    if (applist.length <= parserIndex) {
+        console.log('End all');
+        return;
+    }
+
+    let link = applist[parserIndex];
+
+    console.log(link);
+
+    await driver.get(link);
+
+    let data = await scriptRun(catScript);
+
+    console.log(data);
+
+    data.applink = link;
+
+    saveCatData(data);
     return;
 }
 
@@ -138,11 +177,42 @@ const getInit = () => {
     });
 };
 
+const parseCatInit = () => {
+    console.log('Init...');
+    
+    applist = [];
+    // Load ignored links
+    query = "SELECT `link` FROM `reviews` GROUP BY `link`";
+    pool.query(query, function (err, result) {
+        if (err) throw err;
+
+        for (const row of result) {
+            applist.push(row.link);
+        }
+        
+        console.log(applist.length);
+
+        browserInit();
+    
+        console.log('Init end');
+    
+        console.log('Parse...');
+        getAppCatInfo()
+    });
+};
+
 const getAppInfo = async () => {
     await driver.get(initLink);
 
     parserData();
 }
 
+const getAppCatInfo = async () => {
+    await driver.get(initLink);
 
-getInit();
+    parserCatData();
+}
+
+
+// getInit();
+parseCatInit();
